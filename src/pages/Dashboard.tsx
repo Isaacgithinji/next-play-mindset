@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Activity, BookOpen, MessageSquare, TrendingUp, LogOut } from "lucide-react";
 import CareerSuggestions from "@/components/CareerSuggestions";
+import mentalHealthBg from "@/assets/mental-health-athletes-bg.png";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -141,9 +142,20 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-hero">
+    <div className="min-h-screen bg-gradient-hero relative overflow-hidden">
+      {/* Mental Health Symbols Background */}
+      <div 
+        className="absolute inset-0 opacity-[0.07] pointer-events-none"
+        style={{
+          backgroundImage: `url(${mentalHealthBg})`,
+          backgroundSize: 'contain',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      />
+      
       {/* Navigation */}
-      <nav className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50">
+      <nav className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50 relative">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Activity className="h-6 w-6 text-primary" />
@@ -162,7 +174,7 @@ const Dashboard = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-12 max-w-6xl">
+      <main className="container mx-auto px-4 py-12 max-w-6xl relative z-10">
         {/* Welcome Section */}
         <div className="mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-3">
