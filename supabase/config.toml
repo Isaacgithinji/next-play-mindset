@@ -1,4 +1,7 @@
 project_id = "xjsnbmovrdzntbnmfsyp"
 
 [functions.chat]
-verify_jwt = true
+verify_jwt = false
+
+[functions.career-suggestions]
+verify_jwt = false
