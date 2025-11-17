@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Activity, BookOpen, MessageSquare, TrendingUp, LogOut } from "lucide-react";
+import CareerSuggestions from "@/components/CareerSuggestions";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -16,6 +17,37 @@ const Dashboard = () => {
     averageMood: 0,
   });
   const [loading, setLoading] = useState(true);
+
+  const fetchStats = async (userId: string) => {
+    try {
+      const { count: journalCount } = await supabase
+        .from("journal_entries")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId);
+
+      const { count: conversationCount } = await supabase
+        .from("conversations")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId);
+
+      const { data: journalEntries } = await supabase
+        .from("journal_entries")
+        .select("mood_rating")
+        .eq("user_id", userId);
+
+      const avgMood = journalEntries && journalEntries.length > 0
+        ? journalEntries.reduce((sum, entry) => sum + entry.mood_rating, 0) / journalEntries.length
+        : 0;
+
+      setStats({
+        journalCount: journalCount || 0,
+        conversationCount: conversationCount || 0,
+        averageMood: Math.round(avgMood * 10) / 10,
+      });
+    } catch (error: any) {
+      toast.error("Failed to load dashboard data");
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -39,31 +71,7 @@ const Dashboard = () => {
           setProfile(profileData);
         }
 
-        // Load stats
-        const { count: journalCount } = await supabase
-          .from("journal_entries")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id);
-
-        const { count: conversationCount } = await supabase
-          .from("conversations")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id);
-
-        const { data: journalEntries } = await supabase
-          .from("journal_entries")
-          .select("mood_rating")
-          .eq("user_id", user.id);
-
-        const avgMood = journalEntries && journalEntries.length > 0
-          ? journalEntries.reduce((sum, entry) => sum + entry.mood_rating, 0) / journalEntries.length
-          : 0;
-
-        setStats({
-          journalCount: journalCount || 0,
-          conversationCount: conversationCount || 0,
-          averageMood: Math.round(avgMood * 10) / 10,
-        });
+        await fetchStats(user.id);
       } catch (error: any) {
         toast.error("Failed to load dashboard data");
       } finally {
@@ -73,6 +81,50 @@ const Dashboard = () => {
 
     loadData();
   }, [navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Set up realtime subscriptions for live stat updates
+    const journalChannel = supabase
+      .channel('dashboard-journal-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'journal_entries',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          console.log('Journal entry changed, updating stats');
+          fetchStats(user.id);
+        }
+      )
+      .subscribe();
+
+    const conversationChannel = supabase
+      .channel('dashboard-conversation-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversations',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          console.log('New conversation, updating stats');
+          fetchStats(user.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(journalChannel);
+      supabase.removeChannel(conversationChannel);
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -209,6 +261,16 @@ const Dashboard = () => {
             </Card>
           </div>
         </div>
+
+        {/* Career Suggestions */}
+        {profile && (
+          <div className="mb-12">
+            <CareerSuggestions
+              formerSport={profile.former_sport}
+              careerEndReason={profile.career_end_reason}
+            />
+          </div>
+        )}
 
         {/* Profile Info */}
         {profile && (
