@@ -90,14 +90,14 @@ const Auth = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
 
-      const { error } = await supabase.from("profiles").insert({
-        id: user.id,
-        email: user.email!,
-        full_name: fullName,
-        former_sport: formerSport,
-        career_end_reason: careerEndReason,
-        career_end_date: careerEndDate,
-      });
+      const { error } = await supabase.from("profiles")
+        .update({
+          full_name: fullName,
+          former_sport: formerSport,
+          career_end_reason: careerEndReason,
+          career_end_date: careerEndDate,
+        })
+        .eq('id', user.id);
 
       if (error) throw error;
 
