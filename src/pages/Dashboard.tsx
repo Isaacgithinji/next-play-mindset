@@ -62,13 +62,16 @@ const Dashboard = () => {
         setUser(user);
 
         // Load profile
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (profileData) {
+        if (profileError) {
+          console.error("Error loading profile:", profileError);
+          toast.error("Failed to load profile data");
+        } else if (profileData) {
           setProfile(profileData);
         }
 
@@ -128,9 +131,15 @@ const Dashboard = () => {
   }, [user]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success("Signed out successfully");
-    navigate("/");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      toast.success("Signed out successfully");
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast.error("Failed to sign out. Please try again.");
+    }
   };
 
   if (loading) {
