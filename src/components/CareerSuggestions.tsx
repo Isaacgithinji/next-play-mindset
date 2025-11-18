@@ -26,20 +26,35 @@ const CareerSuggestions = ({ formerSport, careerEndReason }: CareerSuggestionsPr
   const fetchSuggestions = async () => {
     setLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Please sign in to get career suggestions");
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("career-suggestions", {
         body: { formerSport, careerEndReason },
       });
 
       if (error) {
-        if (error.message?.includes("429")) {
+        if (error.message?.includes("429") || error.status === 429) {
           toast.error("Rate limit exceeded. Please try again later.");
           return;
         }
-        if (error.message?.includes("402")) {
-          toast.error("AI service requires payment. Please contact support.");
+        if (error.message?.includes("402") || error.status === 402) {
+          toast.error("AI credits exhausted. Please add credits to continue.");
+          return;
+        }
+        if (error.message?.includes("401") || error.status === 401) {
+          toast.error("Authentication required. Please sign in again.");
           return;
         }
         throw error;
+      }
+
+      if (!data?.suggestions) {
+        throw new Error("Invalid response from AI service");
       }
 
       setSuggestions(data.suggestions);
@@ -47,7 +62,7 @@ const CareerSuggestions = ({ formerSport, careerEndReason }: CareerSuggestionsPr
       toast.success("Career suggestions generated!");
     } catch (error) {
       console.error("Error fetching career suggestions:", error);
-      toast.error("Failed to generate career suggestions");
+      toast.error("Failed to generate career suggestions. Please try again.");
     } finally {
       setLoading(false);
     }

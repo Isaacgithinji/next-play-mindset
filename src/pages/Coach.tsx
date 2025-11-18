@@ -34,24 +34,30 @@ const Coach = () => {
   }, [navigate]);
 
   const loadConversations = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("conversations")
-      .select("message, response")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true })
-      .limit(20);
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("message, response")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+        .limit(20);
 
-    if (error) {
+      if (error) {
+        console.error("Error loading conversations:", error);
+        toast.error("Failed to load conversation history");
+        return;
+      }
+
+      const loadedMessages: Message[] = [];
+      data?.forEach((conv) => {
+        loadedMessages.push({ role: "user", content: conv.message });
+        loadedMessages.push({ role: "assistant", content: conv.response });
+      });
+      setMessages(loadedMessages);
+    } catch (error) {
       console.error("Error loading conversations:", error);
-      return;
+      toast.error("Failed to load conversation history");
     }
-
-    const loadedMessages: Message[] = [];
-    data?.forEach((conv) => {
-      loadedMessages.push({ role: "user", content: conv.message });
-      loadedMessages.push({ role: "assistant", content: conv.response });
-    });
-    setMessages(loadedMessages);
   };
 
   const scrollToBottom = () => {
@@ -104,6 +110,16 @@ const Coach = () => {
       });
 
       if (!response.ok || !response.body) {
+        if (response.status === 429) {
+          toast.error("Rate limit exceeded. Please try again later.");
+          setIsLoading(false);
+          return;
+        }
+        if (response.status === 402) {
+          toast.error("AI credits exhausted. Please add credits to continue.");
+          setIsLoading(false);
+          return;
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to get AI response");
       }
