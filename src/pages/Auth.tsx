@@ -8,6 +8,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Activity } from "lucide-react";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address').max(255),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128)
+});
+
+const signupSchema = z.object({
+  email: z.string().email('Invalid email address').max(255),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128)
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+});
+
+const onboardingSchema = z.object({
+  fullName: z.string().min(1, 'Name is required').max(100).trim(),
+  formerSport: z.string().min(1, 'Sport is required').max(50),
+  careerEndReason: z.string().min(1, 'Reason is required').max(200),
+  careerEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format')
+});
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -41,6 +64,15 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Validate input
+      const validation = loginSchema.safeParse({ email, password });
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        toast.error(firstError.message);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -62,6 +94,15 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Validate input
+      const validation = signupSchema.safeParse({ email, password });
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        toast.error(firstError.message);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -87,6 +128,20 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Validate input
+      const validation = onboardingSchema.safeParse({
+        fullName,
+        formerSport,
+        careerEndReason,
+        careerEndDate
+      });
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        toast.error(firstError.message);
+        setLoading(false);
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
 
