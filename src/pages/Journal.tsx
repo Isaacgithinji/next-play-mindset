@@ -11,6 +11,19 @@ import { toast } from "sonner";
 import { Activity, ArrowLeft, Calendar, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format } from "date-fns";
+import { z } from "zod";
+
+const journalEntrySchema = z.object({
+  entry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
+  mood_rating: z.number().min(1).max(10),
+  gratitude_1: z.string().trim().min(1, "Required").max(500, "Too long"),
+  gratitude_2: z.string().trim().min(1, "Required").max(500, "Too long"),
+  gratitude_3: z.string().trim().min(1, "Required").max(500, "Too long"),
+  challenge_faced: z.string().trim().min(1, "Required").max(1000, "Too long"),
+  small_win: z.string().trim().min(1, "Required").max(1000, "Too long"),
+  tomorrow_goal: z.string().trim().min(1, "Required").max(1000, "Too long"),
+  private_notes: z.string().max(2000, "Too long").optional(),
+});
 
 interface JournalEntry {
   id: string;
@@ -107,19 +120,38 @@ const Journal = () => {
 
     setSubmitting(true);
     try {
+      // Validate input
+      const validationResult = journalEntrySchema.safeParse({
+        entry_date: entryDate,
+        mood_rating: moodRating[0],
+        gratitude_1: gratitude1,
+        gratitude_2: gratitude2,
+        gratitude_3: gratitude3,
+        challenge_faced: challengeFaced,
+        small_win: smallWin,
+        tomorrow_goal: tomorrowGoal,
+        private_notes: privateNotes || undefined,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(`${firstError.path.join('.')}: ${firstError.message}`);
+        return;
+      }
+
       const { error } = await supabase
         .from("journal_entries")
         .insert({
           user_id: user.id,
           entry_date: entryDate,
           mood_rating: moodRating[0],
-          gratitude_1: gratitude1,
-          gratitude_2: gratitude2,
-          gratitude_3: gratitude3,
-          challenge_faced: challengeFaced,
-          small_win: smallWin,
-          tomorrow_goal: tomorrowGoal,
-          private_notes: privateNotes || null,
+          gratitude_1: gratitude1.trim(),
+          gratitude_2: gratitude2.trim(),
+          gratitude_3: gratitude3.trim(),
+          challenge_faced: challengeFaced.trim(),
+          small_win: smallWin.trim(),
+          tomorrow_goal: tomorrowGoal.trim(),
+          private_notes: privateNotes.trim() || null,
         });
 
       if (error) throw error;

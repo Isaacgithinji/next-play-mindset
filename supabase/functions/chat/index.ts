@@ -12,7 +12,37 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    
+    // Validate input
+    if (!body.messages || !Array.isArray(body.messages)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request: messages array required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (body.messages.length === 0 || body.messages.length > 50) {
+      return new Response(
+        JSON.stringify({ error: "Messages must be between 1-50 items" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate each message structure and sanitize
+    const messages = body.messages.map((msg: any, idx: number) => {
+      if (!msg.role || !msg.content || typeof msg.content !== "string") {
+        throw new Error(`Invalid message at index ${idx}`);
+      }
+      if (msg.content.length > 10000) {
+        throw new Error(`Message at index ${idx} exceeds length limit`);
+      }
+      return {
+        role: msg.role,
+        content: msg.content.substring(0, 10000),
+      };
+    });
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
