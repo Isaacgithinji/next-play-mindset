@@ -29,7 +29,28 @@ serve(async (req) => {
       );
     }
 
-    const { formerSport, careerEndReason, skills } = await req.json();
+    const body = await req.json();
+
+    // Validate input
+    if (!body.formerSport || typeof body.formerSport !== "string" || body.formerSport.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request: formerSport is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!body.careerEndReason || typeof body.careerEndReason !== "string" || body.careerEndReason.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request: careerEndReason is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Sanitize and limit input lengths
+    const formerSport = body.formerSport.trim().substring(0, 200);
+    const careerEndReason = body.careerEndReason.trim().substring(0, 1000);
+    const skills = body.skills ? String(body.skills).trim().substring(0, 1000) : "Not specified";
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
