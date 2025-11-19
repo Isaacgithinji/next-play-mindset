@@ -179,7 +179,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-2 mb-8">
           <Activity className="h-8 w-8 text-primary" />
-          <span className="font-bold text-2xl">The Next Play</span>
+          <span className="font-bold text-2xl">Next Play Mindset</span>
         </div>
 
         {mode === "login" && (
