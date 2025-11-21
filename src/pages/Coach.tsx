@@ -98,11 +98,18 @@ const Coach = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
+      if (!session?.access_token) {
+        toast.error("Please sign in to use the AI Coach");
+        navigate("/auth");
+        setIsLoading(false);
+        return;
+      }
+      
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
@@ -110,6 +117,12 @@ const Coach = () => {
       });
 
       if (!response.ok || !response.body) {
+        if (response.status === 401) {
+          toast.error("Session expired. Please sign in again.");
+          navigate("/auth");
+          setIsLoading(false);
+          return;
+        }
         if (response.status === 429) {
           toast.error("Rate limit exceeded. Please try again later.");
           setIsLoading(false);
@@ -121,6 +134,7 @@ const Coach = () => {
           return;
         }
         const errorData = await response.json().catch(() => ({}));
+        console.error("API Error:", response.status, errorData);
         throw new Error(errorData.error || "Failed to get AI response");
       }
 
