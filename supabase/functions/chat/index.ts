@@ -51,10 +51,19 @@ serve(async (req) => {
 
     // Get user from auth header - JWT is automatically verified by Supabase when verify_jwt = true
     const authHeader = req.headers.get("authorization");
+    
+    if (!authHeader) {
+      console.error("Auth error: No authorization header provided");
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader } } }
     );
 
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
